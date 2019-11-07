@@ -9,61 +9,16 @@ namespace Huffman
     {
         public long weight;
         public int creationOrder;
-        public KeyValuePair<char, int> pair;
+        public KeyValuePair<byte, long> pair;
         public Node left;
         public Node right;
 
-        public Node(KeyValuePair<char, int> dictPair)
+        public Node(KeyValuePair<byte, long> dictPair)
         {
             weight = dictPair.Value;
             pair = dictPair;
             left = null;
             right = null;
-        }
-        private bool CheckNodeOrder(Tuple<Node, Node> nodePair)
-        {
-            if (nodePair.Item1.left == null && nodePair.Item1.right == null)
-            {
-                // Node 1 is a leaf
-                if (nodePair.Item2.left == null && nodePair.Item2.right == null)
-                {
-                    // Node 2 is also a leaf
-                    if (nodePair.Item1.weight < nodePair.Item2.weight)
-                    {
-                        // Node 1 goes left
-                        return true;
-                    }
-                    else
-                    {
-                        // Node 2 goes left
-                        return false;
-                    }
-                }
-                else
-                {
-                    // Node 2 is not a leaf
-                    return true;
-                }
-            }
-            else if (nodePair.Item2.left == null && nodePair.Item2.right == null)
-            {
-                // Node 2 is a leaf while Node 1 isn't
-                return false;
-            }
-            else
-            {
-                // Neither Node 1 nor Node 2 are leaves
-                if (nodePair.Item1.creationOrder < nodePair.Item2.creationOrder)
-                {
-                    // Node 1 goes left
-                    return true;
-                }
-                else
-                {
-                    // Node 2 goes left
-                    return false;
-                }
-            }
         }
         public Node(Tuple<Node, Node> nodePair, int creationOrder)
         {
@@ -81,31 +36,79 @@ namespace Huffman
                 right = nodePair.Item1;
             }
         }
+        private bool CheckNodeOrder(Tuple<Node, Node> nodePair)
+        {
+            if (nodePair.Item1.weight == nodePair.Item2.weight)
+            {
+                if (nodePair.Item1.left == null && nodePair.Item1.right == null)
+                {
+                    // Node 1 is a leaf
+                    if (nodePair.Item2.left == null && nodePair.Item2.right == null)
+                    {
+                        // Node 2 is also a leaf
+                        return true;
+                    }
+                    else
+                    {
+                        // Node 2 is not a leaf
+                        return true;
+                    }
+                }
+                else if (nodePair.Item2.left == null && nodePair.Item2.right == null)
+                {
+                    // Node 2 is a leaf while Node 1 isn't
+                    return false;
+                }
+                else
+                {
+                    // Neither Node 1 nor Node 2 are leaves
+                    if (nodePair.Item1.creationOrder < nodePair.Item2.creationOrder)
+                    {
+                        // Node 1 goes left
+                        return true;
+                    }
+                    else
+                    {
+                        // Node 2 goes left
+                        return false;
+                    }
+                }
+            }
+            else
+                return true;
+        }
     }
-
     class Tree
     {
-        public void Traverse(Node root)
+        public static void PrintPreorder(Node node)
         {
-            if (root == null)
-            {
+            if (node == null)
                 return;
+
+            if (node.left == null && node.right == null)
+            {
+                Console.Write("*{0}:{1} ", node.pair.Key, node.pair.Value);
+            }
+            else
+            {
+                Console.Write(node.weight + " ");
             }
 
-            Traverse(root.left);
-            Traverse(root.right);
+            PrintPreorder(node.left);
+            PrintPreorder(node.right);
         }
     }
 
     class TreeBuilder
     {
-        private Dictionary<char, int> _dictionary;
-        private List<KeyValuePair<char, int>> _dictInListForm;
+        private Dictionary<byte, long> _dictionary;
+        private List<KeyValuePair<byte, long>> _dictInListForm;
         private List<Node> _nodeList;
 
         public TreeBuilder()
         {
-            _dictionary = new Dictionary<char, int>();
+            _dictionary = new Dictionary<byte, long>();
+            _nodeList = new List<Node>();
         }
 
         public int GetNodeListCount()
@@ -117,20 +120,20 @@ namespace Huffman
         {
             return _nodeList[0];
         }
-        public void AddToDictionary(char readByte)
+        public void AddToDictionary(byte readByte)
         {
             if (_dictionary.ContainsKey(readByte))
                 _dictionary[readByte]++;
             else
                 _dictionary.Add(readByte, 1);
         }
-        private void ConvertToList()
+        public void ConvertToList()
         {
             _dictInListForm = _dictionary.OrderBy(d => d.Value).ToList();
         }
-        private void ConvertToNodes()
+        public void ConvertToNodes()
         {
-            foreach (KeyValuePair<char, int> pair in _dictInListForm)
+            foreach (KeyValuePair<byte, long> pair in _dictInListForm)
             {
                 _nodeList.Add(new Node(pair));
             }
@@ -141,22 +144,26 @@ namespace Huffman
         {
             _nodeList.Insert(0, node);
         }
-
+        public void ReSortNodeList()
+        {
+            _nodeList = _nodeList.OrderBy(d => d.weight).ToList();
+            SortByByte();
+        }
         private void SortByByte()
         {
             bool unsorted = true;
             while (unsorted)
             {
+                unsorted = false;
                 for (int i = 0; i < _nodeList.Count - 1; i++)
                 {
-                    unsorted = false;
                     if (_nodeList[i].weight == _nodeList[i + 1].weight)
                     {
-                        if (_nodeList[i].pair.Key < _nodeList[i + 1].pair.Key)
+                        if (_nodeList[i].pair.Key > _nodeList[i + 1].pair.Key)
                         {
                             var node = _nodeList[i];
                             _nodeList[i] = _nodeList[i + 1];
-                            _nodeList[i + 1] = _nodeList[i];
+                            _nodeList[i + 1] = node;
                             unsorted = true;
                         }
                     }
@@ -167,7 +174,10 @@ namespace Huffman
         {
             if (_nodeList.Count > 1)
             {
-                return new Tuple<Node, Node>(_nodeList[0], _nodeList[1]);
+                var returnVal = new Tuple<Node, Node>(_nodeList[0], _nodeList[1]);
+                _nodeList.RemoveAt(0);
+                _nodeList.RemoveAt(0);
+                return returnVal;
                 // !!!! ADD SORTING BY KEY !!!! !!!! ADD SORTING BY KEY !!!! !!!! ADD SORTING BY KEY !!!! !!!! ADD SORTING BY KEY !!!! !!!! ADD SORTING BY KEY !!!! !!!! ADD SORTING BY KEY !!!! !!!! ADD SORTING BY KEY !!!! 
             }
             else
@@ -181,7 +191,7 @@ namespace Huffman
         }
         public void PrintDictionary()
         {
-            foreach (KeyValuePair<char, int> entry in _dictionary)
+            foreach (KeyValuePair<byte, long> entry in _dictionary)
             {
                 Console.WriteLine("{0}: {1}", entry.Key, entry.Value);
             }
@@ -228,18 +238,21 @@ namespace Huffman
             int inputByte;
             while ((inputByte = inputProcessor.ReadByte()) > -1)
             {
-                treeBuilder.AddToDictionary((char) inputByte);
+                treeBuilder.AddToDictionary((byte)inputByte);
             }
+
+            treeBuilder.ConvertToList();
+            treeBuilder.ConvertToNodes();
 
             int i = 0;
             while (treeBuilder.GetNodeListCount() > 1)
             {
                 Node innerNode = treeBuilder.JoinTwoNodes(treeBuilder.GetNodes(), i);
                 treeBuilder.InsertIntoNodeList(innerNode);
+                treeBuilder.ReSortNodeList();
                 i++;
             }
-            
-
+            Tree.PrintPreorder(treeBuilder.GetRoot());
 
             return (0);
         }
