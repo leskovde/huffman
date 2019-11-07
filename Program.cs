@@ -33,24 +33,10 @@ namespace Huffman
                         // Node 1 goes left
                         return true;
                     }
-                    else if (nodePair.Item1.weight > nodePair.Item2.weight)
+                    else
                     {
                         // Node 2 goes left
                         return false;
-                    }
-                    else
-                    {
-                        // Nodes have the same value
-                        if (nodePair.Item1.pair.Key < nodePair.Item2.pair.Key)
-                        {
-                            // Byte in Node 1 has smaller ASCII value
-                            return true;
-                        }
-                        else
-                        {
-                            // Byte in Node 2 has smaller ASCII value
-                            return false;
-                        }
                     }
                 }
                 else
@@ -84,7 +70,7 @@ namespace Huffman
             this.creationOrder = creationOrder;
             weight = nodePair.Item1.weight + nodePair.Item2.weight;
 
-            if(CheckNodeOrder(nodePair))
+            if (CheckNodeOrder(nodePair))
             {
                 left = nodePair.Item1;
                 right = nodePair.Item2;
@@ -99,34 +85,15 @@ namespace Huffman
 
     class Tree
     {
-        public Node insert(Node root, int v)
-        {
-            if (root == null)
-            {
-                root = new Node();
-                root.weight = v;
-            }
-            else if (v < root.weight)
-            {
-                root.left = insert(root.left, v);
-            }
-            else
-            {
-                root.right = insert(root.right, v);
-            }
-
-            return root;
-        }
-
-        public void traverse(Node root)
+        public void Traverse(Node root)
         {
             if (root == null)
             {
                 return;
             }
 
-            traverse(root.left);
-            traverse(root.right);
+            Traverse(root.left);
+            Traverse(root.right);
         }
     }
 
@@ -140,7 +107,17 @@ namespace Huffman
         {
             _dictionary = new Dictionary<char, int>();
         }
-        private void AddToDictionary(char readByte)
+
+        public int GetNodeListCount()
+        {
+            return _nodeList.Count;
+        }
+
+        public Node GetRoot()
+        {
+            return _nodeList[0];
+        }
+        public void AddToDictionary(char readByte)
         {
             if (_dictionary.ContainsKey(readByte))
                 _dictionary[readByte]++;
@@ -156,6 +133,34 @@ namespace Huffman
             foreach (KeyValuePair<char, int> pair in _dictInListForm)
             {
                 _nodeList.Add(new Node(pair));
+            }
+            SortByByte();
+        }
+
+        public void InsertIntoNodeList(Node node)
+        {
+            _nodeList.Insert(0, node);
+        }
+
+        private void SortByByte()
+        {
+            bool unsorted = true;
+            while (unsorted)
+            {
+                for (int i = 0; i < _nodeList.Count - 1; i++)
+                {
+                    unsorted = false;
+                    if (_nodeList[i].weight == _nodeList[i + 1].weight)
+                    {
+                        if (_nodeList[i].pair.Key < _nodeList[i + 1].pair.Key)
+                        {
+                            var node = _nodeList[i];
+                            _nodeList[i] = _nodeList[i + 1];
+                            _nodeList[i + 1] = _nodeList[i];
+                            unsorted = true;
+                        }
+                    }
+                }
             }
         }
         public Tuple<Node, Node> GetNodes()
@@ -220,13 +225,20 @@ namespace Huffman
             InputProcessor inputProcessor = new InputProcessor(args[0]);
             TreeBuilder treeBuilder = new TreeBuilder();
 
-            while (inputProcessor.ReadByte() > -1)
+            int inputByte;
+            while ((inputByte = inputProcessor.ReadByte()) > -1)
             {
-                treeBuilder.
+                treeBuilder.AddToDictionary((char) inputByte);
             }
-            //Console.WriteLine(counter);
-            WordProcessing.PrintDictionary();
 
+            int i = 0;
+            while (treeBuilder.GetNodeListCount() > 1)
+            {
+                Node innerNode = treeBuilder.JoinTwoNodes(treeBuilder.GetNodes(), i);
+                treeBuilder.InsertIntoNodeList(innerNode);
+                i++;
+            }
+            
 
 
             return (0);
