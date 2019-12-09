@@ -1,260 +1,277 @@
 ﻿using System;
-using System.IO;
 using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 
-namespace Huffman
+namespace Huffman2
 {
-    class Node
+    internal class InputProcessor
     {
-        public long weight;
-        public int creationOrder;
-        public KeyValuePair<byte, long> pair;
-        public Node left;
-        public Node right;
+        private readonly FileStream _reader;
 
-        public Node(KeyValuePair<byte, long> dictPair)
-        {
-            weight = dictPair.Value;
-            pair = dictPair;
-            left = null;
-            right = null;
-        }
-        public Node(Tuple<Node, Node> nodePair, int creationOrder)
-        {
-            this.creationOrder = creationOrder;
-            weight = nodePair.Item1.weight + nodePair.Item2.weight;
-
-            if (CheckNodeOrder(nodePair))
-            {
-                left = nodePair.Item1;
-                right = nodePair.Item2;
-            }
-            else
-            {
-                left = nodePair.Item2;
-                right = nodePair.Item1;
-            }
-        }
-        private bool CheckNodeOrder(Tuple<Node, Node> nodePair)
-        {
-            if (nodePair.Item1.weight == nodePair.Item2.weight)
-            {
-                if (nodePair.Item1.left == null && nodePair.Item1.right == null)
-                {
-                    // Node 1 is a leaf
-                    if (nodePair.Item2.left == null && nodePair.Item2.right == null)
-                    {
-                        // Node 2 is also a leaf
-                        return true;
-                    }
-                    else
-                    {
-                        // Node 2 is not a leaf
-                        return true;
-                    }
-                }
-                else if (nodePair.Item2.left == null && nodePair.Item2.right == null)
-                {
-                    // Node 2 is a leaf while Node 1 isn't
-                    return false;
-                }
-                else
-                {
-                    // Neither Node 1 nor Node 2 are leaves
-                    if (nodePair.Item1.creationOrder < nodePair.Item2.creationOrder)
-                    {
-                        // Node 1 goes left
-                        return true;
-                    }
-                    else
-                    {
-                        // Node 2 goes left
-                        return false;
-                    }
-                }
-            }
-            else
-                return true;
-        }
-    }
-    class Tree
-    {
-        public static void PrintPreorder(Node node)
-        {
-            if (node == null)
-                return;
-
-            if (node.left == null && node.right == null)
-            {
-                Console.Write("*{0}:{1} ", node.pair.Key, node.pair.Value);
-            }
-            else
-            {
-                Console.Write(node.weight + " ");
-            }
-
-            PrintPreorder(node.left);
-            PrintPreorder(node.right);
-        }
-    }
-
-    class TreeBuilder
-    {
-        private Dictionary<byte, long> _dictionary;
-        private List<KeyValuePair<byte, long>> _dictInListForm;
-        private List<Node> _nodeList;
-
-        public TreeBuilder()
-        {
-            _dictionary = new Dictionary<byte, long>();
-            _nodeList = new List<Node>();
-        }
-
-        public int GetNodeListCount()
-        {
-            return _nodeList.Count;
-        }
-
-        public Node GetRoot()
-        {
-            return _nodeList[0];
-        }
-        public void AddToDictionary(byte readByte)
-        {
-            if (_dictionary.ContainsKey(readByte))
-                _dictionary[readByte]++;
-            else
-                _dictionary.Add(readByte, 1);
-        }
-        public void ConvertToList()
-        {
-            _dictInListForm = _dictionary.OrderBy(d => d.Value).ToList();
-        }
-        public void ConvertToNodes()
-        {
-            foreach (KeyValuePair<byte, long> pair in _dictInListForm)
-            {
-                _nodeList.Add(new Node(pair));
-            }
-            SortByByte();
-        }
-
-        public void InsertIntoNodeList(Node node)
-        {
-            _nodeList.Insert(0, node);
-        }
-        public void ReSortNodeList()
-        {
-            _nodeList = _nodeList.OrderBy(d => d.weight).ToList();
-            SortByByte();
-        }
-        private void SortByByte()
-        {
-            bool unsorted = true;
-            while (unsorted)
-            {
-                unsorted = false;
-                for (int i = 0; i < _nodeList.Count - 1; i++)
-                {
-                    if (_nodeList[i].weight == _nodeList[i + 1].weight)
-                    {
-                        if (_nodeList[i].pair.Key > _nodeList[i + 1].pair.Key)
-                        {
-                            var node = _nodeList[i];
-                            _nodeList[i] = _nodeList[i + 1];
-                            _nodeList[i + 1] = node;
-                            unsorted = true;
-                        }
-                    }
-                }
-            }
-        }
-        public Tuple<Node, Node> GetNodes()
-        {
-            if (_nodeList.Count > 1)
-            {
-                var returnVal = new Tuple<Node, Node>(_nodeList[0], _nodeList[1]);
-                _nodeList.RemoveAt(0);
-                _nodeList.RemoveAt(0);
-                return returnVal;
-                // !!!! ADD SORTING BY KEY !!!! !!!! ADD SORTING BY KEY !!!! !!!! ADD SORTING BY KEY !!!! !!!! ADD SORTING BY KEY !!!! !!!! ADD SORTING BY KEY !!!! !!!! ADD SORTING BY KEY !!!! !!!! ADD SORTING BY KEY !!!! 
-            }
-            else
-            {
-                return null;
-            }
-        }
-        public Node JoinTwoNodes(Tuple<Node, Node> nodePair, int creationOrder)
-        {
-            return new Node(nodePair, creationOrder);
-        }
-        public void PrintDictionary()
-        {
-            foreach (KeyValuePair<byte, long> entry in _dictionary)
-            {
-                Console.WriteLine("{0}: {1}", entry.Key, entry.Value);
-            }
-        }
-    }
-
-    class InputProcessor
-    {
-        private FileStream _reader;
         public InputProcessor(string fileName)
         {
             try
             {
-                FileStream reader = new FileStream(fileName, FileMode.Open);
-                _reader = reader;
+                _reader = new FileStream(fileName, FileMode.Open);
             }
             catch
             {
                 Console.WriteLine("File Error");
+                Environment.Exit(0);
             }
         }
+
         public int ReadByte()
         {
-            int buffer;
-            if ((buffer = _reader.ReadByte()) >= 0)
-                return buffer;
-            else
-                return -1;
+            try
+            {
+                int buffer;
+                if ((buffer = _reader.ReadByte()) >= 0)
+                    return buffer;
+            }
+            catch
+            {
+                Console.WriteLine("File Error");
+                Environment.Exit(0);
+            }
+
+            return -1;
+        }
+
+        public void SeekSet()
+        {
+            try
+            {
+                _reader.Seek(0, SeekOrigin.Begin);
+            }
+            catch
+            {
+                Console.WriteLine("File Error");
+                Environment.Exit(0);
+            }
         }
     }
-    class Program
+
+    internal class OutputProcessor
     {
-        static int Main(string[] args)
+        private readonly FileStream _writer;
+
+        public OutputProcessor(string fileName)
+        {
+            try
+            {
+                _writer = new FileStream(fileName + ".huff", FileMode.CreateNew, FileAccess.Write);
+            }
+            catch
+            {
+                Console.WriteLine("File Error");
+                Environment.Exit(0);
+            }
+        }
+
+        public void WriteBuffer(byte[] buffer)
+        {
+            try
+            {
+                _writer.Write(buffer, 0, buffer.Length);
+            }
+            catch
+            {
+                Console.WriteLine("File Error");
+                Environment.Exit(0);
+            }
+        }
+
+        public void CloseFile()
+        {
+            _writer.Close();
+        }
+    }
+
+    internal class Coding
+    {
+        public readonly byte[] Header =
+        {
+            0x7B, 0x68, 0x75, 0x7C,
+            0x6D, 0x7D, 0x66, 0x66
+        };
+
+        public readonly byte[] Separator =
+        {
+            0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00
+        };
+
+        public byte[] TreeNotation;
+
+        public Coding(Node root)
+        {
+            GenerateTreeNotation(root);
+        }
+
+        private byte[] SplitIntoBytes(ulong sequence)
+        {
+            var byteArray = new byte[8];
+            for (var i = 0; i < 8; i++)
+            {
+                var temp = sequence << (56 - i * 8);
+                byteArray[i] = (byte) (temp >> 56);
+            }
+
+            return byteArray;
+        }
+
+        public void GenerateTreeNotation(Node root)
+        {
+            var preorderList = new List<ulong>();
+            Tree.TraversePreorder(root, preorderList, 0, 0);
+            TreeNotation = new byte[preorderList.Count * 8];
+            for (var i = 0; i < preorderList.Count; i++)
+            {
+                var bytes = SplitIntoBytes(preorderList[i]);
+                for (var j = 0; j < 8; j++) TreeNotation[i * 8 + j] = bytes[j];
+            }
+        }
+
+        private static ulong Reverse(ulong input)
+        {
+            var x = input;
+            ulong y = 0;
+            while (x != 0)
+            {
+                y <<= 1;
+                y |= x & 1;
+                x >>= 1;
+            }
+
+            return y;
+        }
+
+        public byte? Encode(byte? readByte, ref ulong remainder, ref ulong remainderLength)
+        {
+            if (readByte != null)
+            {
+                var inputByteBitSequence = Tree.CodingCache[(byte) readByte, 0];
+                var inputByteLength = Tree.CodingCache[(byte) readByte, 1];
+                var inputByteLeadingZeroes = Tree.CodingCache[(byte) readByte, 2];
+
+                //var temp = Reverse(inputByteBitSequence);
+                inputByteBitSequence <<= (int)(remainderLength);
+
+                remainder |= inputByteBitSequence;
+                remainderLength += inputByteLength;
+            }
+
+            if (remainderLength < 8) return null;
+            {
+                var temp = remainder;
+                remainder >>= 8;
+                remainderLength -= 8;
+                return (byte?) temp;
+            }
+
+        }
+
+        public byte[] FinishCoding(byte[] buffer, int index, ulong remainder, ulong remainderLength)
+        {
+            byte[] returnVal;
+
+            if (remainderLength != 0)
+            {
+                returnVal = new byte[index + 1];
+                returnVal[index] = (byte) remainder;
+            }
+            else
+            {
+                returnVal = new byte[index];
+            }
+
+            for (var i = 0; i < index; i++) returnVal[i] = buffer[i];
+
+            return returnVal;
+        }
+    }
+
+    internal class Program
+    {
+        private static int Main(string[] args)
         {
             if (args.Length != 1)
             {
                 Console.WriteLine("Argument Error");
-                return (0);
+                return 0;
             }
 
-            InputProcessor inputProcessor = new InputProcessor(args[0]);
-            TreeBuilder treeBuilder = new TreeBuilder();
+            var inputProcessor = new InputProcessor(args[0]);
+            var outputProcessor = new OutputProcessor(args[0]);
+            var treeBuilder = new TreeBuilder();
+            var priorityQueue = new PriorityQueue();
 
             int inputByte;
-            while ((inputByte = inputProcessor.ReadByte()) > -1)
-            {
-                treeBuilder.AddToDictionary((byte)inputByte);
-            }
+            while ((inputByte = inputProcessor.ReadByte()) > -1) treeBuilder.HashTable.Insert(inputByte);
 
-            treeBuilder.ConvertToList();
-            treeBuilder.ConvertToNodes();
+            priorityQueue.InitQueue(treeBuilder.HashTable);
 
-            int i = 0;
-            while (treeBuilder.GetNodeListCount() > 1)
+            var i = 0;
+            while (priorityQueue.NodeList.Count > 1)
             {
-                Node innerNode = treeBuilder.JoinTwoNodes(treeBuilder.GetNodes(), i);
-                treeBuilder.InsertIntoNodeList(innerNode);
-                treeBuilder.ReSortNodeList();
+                var innerNode = treeBuilder.JoinTwoNodes(priorityQueue.ExtractMin(), i);
+                priorityQueue.QueueInsert(innerNode);
                 i++;
             }
-            Tree.PrintPreorder(treeBuilder.GetRoot());
 
-            return (0);
+            var coding = new Coding(treeBuilder.GetRoot(priorityQueue));
+
+            outputProcessor.WriteBuffer(coding.Header);
+            outputProcessor.WriteBuffer(coding.TreeNotation);
+            outputProcessor.WriteBuffer(coding.Separator);
+            Tree.GetLeadingZeroes();
+            Tree.ReverseCache();
+            inputProcessor.SeekSet();
+
+            i = 0;
+            ulong remainder = 0, remainderLength = 0;
+            var buffer = new byte[8];
+
+            while ((inputByte = inputProcessor.ReadByte()) > -1)
+            {
+                var codedByte = coding.Encode((byte?) inputByte, ref remainder, ref remainderLength);
+                if (codedByte == null) continue;
+                buffer[i] = (byte) codedByte;
+                i++;
+                if (i == 8)
+                {
+                    outputProcessor.WriteBuffer(buffer);
+                    Array.Clear(buffer, 0, 8);
+                    i = 0;
+                }
+
+                while (remainderLength > 12)
+                {
+                    try
+                    {
+                        buffer[i] = (byte) coding.Encode(null, ref remainder, ref remainderLength);
+                    }
+                    catch
+                    {
+                        Console.WriteLine("This shouldn't have happened.");
+                        throw;
+                    }
+                    i++;
+
+                    if (i != 8) continue;
+                    outputProcessor.WriteBuffer(buffer);
+                    Array.Clear(buffer, 0, 8);
+                    i = 0;
+                }
+            }
+
+            buffer = coding.FinishCoding(buffer, i, remainder, remainderLength);
+            outputProcessor.WriteBuffer(buffer);
+
+            outputProcessor.CloseFile();
+
+            return 0;
         }
     }
 }
